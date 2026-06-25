@@ -12,7 +12,8 @@ app.get("/login", (req, res) => {
 app.post("/zipper", express.raw({ type: "*/*", limit: "10mb" }), (req, res) => {
   try {
     const compressed = zlib.gzipSync(req.body);
-    res.type("application/gzip").set("Content-Disposition", "attachment; filename=result.gz").send(compressed);
+    res.setHeader("Content-Type", "application/gzip");
+    res.end(compressed);
   } catch (e) {
     res.status(500).send("error");
   }
