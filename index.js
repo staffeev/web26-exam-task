@@ -1,33 +1,37 @@
 import express from "express";
 import cors from "cors";
+import busboy from "busboy";
 import zlib from "zlib";
 
 const app = express();
 app.use(cors());
 
 app.get("/login", (_, res) => {
-  res.type("text/plain");
-  res.end("staffeev409626");
+  res.type("text/plain").send("staffeev409626");
 });
 
-function collect(req) {
-  return new Promise((resolve) => {
-    const buf = [];
-    req.on("data", (c) => buf.push(c));
-    req.on("end", () => resolve(Buffer.concat(buf)));
-  });
+function gzip(data) {
+  return zlib.gzipSync(data);
 }
 
-app.post("/zipper", async (req, res) => {
-  try {
-    const input = await collect(req);
-    const output = zlib.gzipSync(input);
-    res.writeHead(200, {"Content-Type": "application/gzip"});
-    res.end(output);
-  } catch {
-    res.status(500).end("err");
-  }
+app.post("/zipper", (req, res) => {
+  const bb = busboy({ headers: req.headers });
+  let buffer = Buffer.alloc(0);
+  bb.on("file", (_, file) => {
+    file.on("data", (chunk) => {
+      buffer = Buffer.concat([buffer, chunk]);
+    });
+  });
+  bb.on("field", (_, value) => {
+    buffer = Buffer.from(value);
+  });
+  bb.on("close", () => {
+    const result = gzip(buffer);
+    res.setHeader("Content-Type", "application/gzip");
+    res.end(result);
+  });
+  req.pipe(bb);
 });
 
-const port = process.env.PORT;
-app.listen(port);
+const PORT = process.env.PORT;
+app.listen(PORT);
